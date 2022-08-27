@@ -1,0 +1,30 @@
+{
+  "name": "file-slicing-processor",
+  "version": "1.0.0",
+  "description": "Web-side file slicing upload processor",
+  "main": "./lib/bundle.cjs",
+  "module": "./lib/bundle.mjs",
+  "types": "./lib/types/index.d.ts",
+  "files": [
+    "lib"
+  ],
+  "author": "king-peach",
+  "license": "MIT",
+  "scripts": {
+    "dev": "rollup --config rollup.config.js --watch",
+    "build": "rollup --config rollup.config.js"
+  },
+  "keywords": [
+    "file slicing",
+    "file slicing processor",
+    "file slicing upload"
+  ],
+  "dependencies": {
+    "@rollup/plugin-typescript": "^8.4.0",
+    "@types/node": "^18.7.13",
+    "rollup": "^2.78.1",
+    "rollup-plugin-dts": "^4.2.2",
+    "tslib": "^2.4.0",
+    "typescript": "^4.8.2"
+  }
+}
