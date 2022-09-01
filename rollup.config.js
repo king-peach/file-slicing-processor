@@ -1,6 +1,7 @@
 import { defineConfig } from 'rollup';
-import typescript from '@rollup/plugin-typescript';
+import typescript from 'rollup-plugin-typescript2';
 import dts from 'rollup-plugin-dts';
+import commonjs from '@rollup/plugin-commonjs';
 
 export default defineConfig([
   {
@@ -17,9 +18,12 @@ export default defineConfig([
       }
     ],
     plugins: [
+      commonjs({
+        include: 'node_modules/**'
+      }),
       typescript({ 
         compilerOptions: {
-          lib: ['es6']
+          // lib: ['es6']
         }
       })
     ],
@@ -33,6 +37,8 @@ export default defineConfig([
         format: 'esm'
       }
     ],
-    plugins: [dts()]
+    plugins: [
+      dts(),
+    ]
   }
 ])

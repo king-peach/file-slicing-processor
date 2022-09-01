@@ -1,4 +1,5 @@
 import { FileInfo, File, InstanceParams } from './type'
+import SparkMD5 from 'spark-md5'
 
 const isType = type => value => Object.prototype.toString.call(value) === `[object ${type}]`
 const isObject = isType('Object')
@@ -7,12 +8,10 @@ const isFile = isType('File')
 class FileSlicingProcessor {
   /* 文件分片阈值 */
   private chunkSize = 20 * 1024 * 1024
-  /* 是否需要进行文件md5 */
-  private fileMd5 = false
-  /* 是否需要进行文件碎片md5 */
-  private chunkMd5 = false
   /* 文件信息 */
   private fileInfo: Partial<FileInfo> = {}
+  /* 已上传文件碎片数量 */
+  private uploadedChunkNum: number = 0
 
   private onError = null
 
@@ -20,11 +19,13 @@ class FileSlicingProcessor {
 
   private onProgress = null
 
+  private onFileMD5Progress = null
+
   private file = null
 
   constructor (file: File, params?: Partial<InstanceParams>) {
     if (isObject(params)) {
-      const keys = ['onError', 'onFinished', 'onProgress', 'chunkSize', 'fileMd5', 'chunkMd5']
+      const keys = ['onError', 'onFinished', 'onProgress', 'onFileMD5Progress', 'chunkSize', 'uploadedChunkNum']
       Object.keys(params).forEach(key => {
         if (params[key]) this[key] = params[key]
       })
@@ -41,10 +42,41 @@ class FileSlicingProcessor {
       size: file.size,
       totalChunks: Math.ceil(file.size / this.chunkSize),
       md5: `${file.name}-${file.size}-${file.lastModified}`,
-      uploadedChunks: 0
+      uploadedChunks: this.uploadedChunkNum
     }
 
     this.file = file
+  }
+
+  getFileRealMD5 () {
+    return new Promise((resolve, reject) => {
+      let spark = new SparkMD5.ArrayBuffer(),
+          currChunk = 0
+      const fileReader = new FileReader()
+
+      fileReader.onload = e => {
+        spark.append(e.target.result)
+        currChunk++
+        if (currChunk < this.fileInfo.totalChunks) {
+          loadNext()
+        } else {
+          const md5 = spark.end()
+          spark = null
+          resolve(md5)
+          this.fileInfo.md5 = md5
+          this.onFileMD5Progress && this.onFileMD5Progress(Math.ceil(currChunk / this.fileInfo.totalChunks * 10 ** 4) / 10 ** 2)
+        }
+      }
+
+      fileReader.onerror = err => reject(err)
+    
+      const loadNext = () => {
+        fileReader.readAsArrayBuffer(this.handleFileSlice(currChunk, currChunk + 1))
+        this.onFileMD5Progress && this.onFileMD5Progress(Math.ceil(currChunk / this.fileInfo.totalChunks * 10 ** 4) / 10 ** 2)
+      }
+
+      loadNext()
+    })
   }
 
   getChunk () {
@@ -52,13 +84,32 @@ class FileSlicingProcessor {
     return chunk
   }
 
+  getChunkMD5 () {
+    return new Promise((resolve, reject) => {
+      const chunk = this.getChunk()
+      const fileReader = new FileReader()
+      let spark = new SparkMD5.ArrayBuffer()
+  
+      fileReader.onload = e => {
+        spark.append(e.target.result)
+        const result = spark.end()
+        resolve(result)
+        spark = null
+      }
+  
+      fileReader.onerror = e => reject(e)
+  
+      fileReader.readAsArrayBuffer(chunk)
+    })
+  }
+
   next () {
     this.fileInfo.uploadedChunks++
 
-    if (this.fileInfo.uploadedChunks === this.fileInfo.totalChunks) this.onFinished(this.fileInfo)
+    if (this.fileInfo.uploadedChunks === this.fileInfo.totalChunks) this.onFinished && this.onFinished(this.fileInfo)
     
     const progress = Math.ceil(this.fileInfo.uploadedChunks / this.fileInfo.totalChunks * 10 ** 4) / 10 ** 2
-    this.onProgress(progress)
+    this.onProgress && this.onProgress(progress)
   }
 
   private handleFileSlice (start, end) {
