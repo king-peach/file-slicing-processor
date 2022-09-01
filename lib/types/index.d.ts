@@ -8,6 +8,7 @@ interface File {
 }
 
 interface FileInfo {
+  id: string;
   name: string;
   size: number;
   totalChunks: number;
@@ -33,13 +34,13 @@ declare class FileSlicingProcessor {
     private onProgress;
     private onFileMD5Progress;
     private file;
-    constructor(file: File, params?: Partial<InstanceParams>);
+    constructor(file: File, options?: Partial<InstanceParams>);
     getFileRealMD5(): Promise<unknown>;
     getChunk(): any;
     getChunkMD5(): Promise<unknown>;
     next(): void;
     private handleFileSlice;
-    reStart(): void;
+    reStart(num?: number): void;
 }
 
 export { FileSlicingProcessor as default };

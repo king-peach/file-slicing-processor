@@ -12,22 +12,22 @@ class FileSlicingProcessor {
   private fileInfo: Partial<FileInfo> = {}
   /* 已上传文件碎片数量 */
   private uploadedChunkNum: number = 0
-
+  /* 上传错误回调 */
   private onError = null
-
+  /* 上传完成回到函数 */
   private onFinished = null
-
+  /* 上传进度回调函数 */
   private onProgress = null
-
+  /* 文件md5进度回调函数 */
   private onFileMD5Progress = null
-
+  /* 文件内容暂存 */
   private file = null
 
-  constructor (file: File, params?: Partial<InstanceParams>) {
-    if (isObject(params)) {
+  constructor (file: File, options?: Partial<InstanceParams>) {
+    if (isObject(options)) {
       const keys = ['onError', 'onFinished', 'onProgress', 'onFileMD5Progress', 'chunkSize', 'uploadedChunkNum']
-      Object.keys(params).forEach(key => {
-        if (params[key]) this[key] = params[key]
+      Object.keys(options).forEach(key => {
+        if (options[key]) this[key] = options[key]
       })
     }
 
@@ -37,12 +37,21 @@ class FileSlicingProcessor {
       return error as any
     }
 
+    const md5 = `${file.name}-${file.size}-${file.lastModified}`
+    const now = new Date().getTime()
+    const id = SparkMD5.hash(now + md5)
+
     this.fileInfo = {
+      id,
+      md5,
       name: file.name,
       size: file.size,
       totalChunks: Math.ceil(file.size / this.chunkSize),
-      md5: `${file.name}-${file.size}-${file.lastModified}`,
       uploadedChunks: this.uploadedChunkNum
+    }
+
+    if (this.uploadedChunkNum && this.uploadedChunkNum > this.fileInfo.totalChunks) {
+      const error = new Error('The uploadedChunkNum parameter more than file chunk total!')
     }
 
     this.file = file
@@ -120,8 +129,8 @@ class FileSlicingProcessor {
     return null
   }
 
-  reStart () {
-    this.fileInfo.uploadedChunks = 0
+  reStart (num = 0) {
+    this.fileInfo.uploadedChunks = num
   }
 }
 

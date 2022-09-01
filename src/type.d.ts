@@ -8,6 +8,7 @@ export interface File {
 }
 
 export interface FileInfo {
+  id: string;
   name: string;
   size: number;
   totalChunks: number;
