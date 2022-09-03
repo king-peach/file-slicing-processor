@@ -24,3 +24,12 @@ export interface InstanceParams {
   onFinished: (fileInfo?: FileInfo) => void;
   onError: (err?: Error) => void;
 }
+
+export enum Status {
+  READY = 'READY',
+  MD5 = 'MD5',
+  MD5_DONE = 'MD5_DONE',
+  UPLAODING = 'UPLOADING',
+  PAUSE = 'PAUSE',
+  DONE = 'DONE'
+}

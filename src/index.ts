@@ -7,33 +7,35 @@ const isFile = isType('File')
 
 class FileSlicingProcessor {
   /* 文件分片阈值 */
-  private chunkSize = 20 * 1024 * 1024
+  #chunkSize = 20 * 1024 * 1024
   /* 文件信息 */
-  private fileInfo: Partial<FileInfo> = {}
+  #fileInfo: Partial<FileInfo> = {}
   /* 已上传文件碎片数量 */
-  private uploadedChunkNum: number = 0
+  #uploadedChunkNum: number = 0
   /* 上传错误回调 */
-  private onError = null
+  #onError = null
   /* 上传完成回到函数 */
-  private onFinished = null
+  #onFinished = null
   /* 上传进度回调函数 */
-  private onProgress = null
+  #onProgress = null
   /* 文件md5进度回调函数 */
-  private onFileMD5Progress = null
+  #onFileMD5Progress = null
   /* 文件内容暂存 */
-  private file = null
+  #file = null
+  /* 状态 */
+  #status = 'READY'
 
   constructor (file: File, options?: Partial<InstanceParams>) {
     if (isObject(options)) {
-      const keys = ['onError', 'onFinished', 'onProgress', 'onFileMD5Progress', 'chunkSize', 'uploadedChunkNum']
+      const keys = ['http-request', 'onError', 'onFinished', 'onProgress', 'onFileMD5Progress', 'chunkSize', 'uploadedChunkNum']
       Object.keys(options).forEach(key => {
-        if (options[key]) this[key] = options[key]
+        if (options[key]) this[`#${key}`] = options[key]
       })
     }
 
     if (!isFile(file)) {
       const error = new Error('param error: the file is not file type')
-      typeof this.onError === 'function' && this.onError(error)
+      typeof this.#onError === 'function' && this.#onError(error)
       return error as any
     }
 
@@ -41,20 +43,24 @@ class FileSlicingProcessor {
     const now = new Date().getTime()
     const id = SparkMD5.hash(now + md5)
 
-    this.fileInfo = {
+    this.#fileInfo = {
       id,
       md5,
       name: file.name,
       size: file.size,
-      totalChunks: Math.ceil(file.size / this.chunkSize),
-      uploadedChunks: this.uploadedChunkNum
+      totalChunks: Math.ceil(file.size / this.#chunkSize),
+      uploadedChunks: this.#uploadedChunkNum
     }
 
-    if (this.uploadedChunkNum && this.uploadedChunkNum > this.fileInfo.totalChunks) {
+    if (this.#uploadedChunkNum && this.#uploadedChunkNum > this.#fileInfo.totalChunks) {
       const error = new Error('The uploadedChunkNum parameter more than file chunk total!')
     }
 
-    this.file = file
+    this.#file = file
+  }
+
+  getFileInfo () {
+    return this.#fileInfo
   }
 
   getFileRealMD5 () {
@@ -66,14 +72,14 @@ class FileSlicingProcessor {
       fileReader.onload = e => {
         spark.append(e.target.result)
         currChunk++
-        if (currChunk < this.fileInfo.totalChunks) {
+        if (currChunk < this.#fileInfo.totalChunks) {
           loadNext()
         } else {
           const md5 = spark.end()
           spark = null
           resolve(md5)
-          this.fileInfo.md5 = md5
-          this.onFileMD5Progress && this.onFileMD5Progress(Math.ceil(currChunk / this.fileInfo.totalChunks * 10 ** 4) / 10 ** 2)
+          this.#fileInfo.md5 = md5
+          this.#onFileMD5Progress && this.#onFileMD5Progress(Math.ceil(currChunk / this.#fileInfo.totalChunks * 10 ** 4) / 10 ** 2)
         }
       }
 
@@ -81,7 +87,7 @@ class FileSlicingProcessor {
     
       const loadNext = () => {
         fileReader.readAsArrayBuffer(this.handleFileSlice(currChunk, currChunk + 1))
-        this.onFileMD5Progress && this.onFileMD5Progress(Math.ceil(currChunk / this.fileInfo.totalChunks * 10 ** 4) / 10 ** 2)
+        this.#onFileMD5Progress && this.#onFileMD5Progress(Math.ceil(currChunk / this.#fileInfo.totalChunks * 10 ** 4) / 10 ** 2)
       }
 
       loadNext()
@@ -89,7 +95,7 @@ class FileSlicingProcessor {
   }
 
   getChunk () {
-    const chunk = this.handleFileSlice(this.fileInfo.uploadedChunks, this.fileInfo.uploadedChunks + 1)
+    const chunk = this.handleFileSlice(this.#fileInfo.uploadedChunks, this.#fileInfo.uploadedChunks + 1)
     return chunk
   }
 
@@ -104,7 +110,7 @@ class FileSlicingProcessor {
         const result = spark.end()
         resolve(result)
         spark = null
-      }
+      } 
   
       fileReader.onerror = e => reject(e)
   
@@ -112,25 +118,33 @@ class FileSlicingProcessor {
     })
   }
 
-  next () {
-    this.fileInfo.uploadedChunks++
+  // start () {
+  //   if (this.#status !== 'UPLOADING') {
 
-    if (this.fileInfo.uploadedChunks === this.fileInfo.totalChunks) this.onFinished && this.onFinished(this.fileInfo)
+  //   }
+  // }
+
+  next () {
+    if (this.#fileInfo.uploadedChunks === this.#fileInfo.totalChunks) return
+
+    this.#fileInfo.uploadedChunks++
+
+    if (this.#fileInfo.uploadedChunks === this.#fileInfo.totalChunks) this.#onFinished && this.#onFinished(this.#fileInfo)
     
-    const progress = Math.ceil(this.fileInfo.uploadedChunks / this.fileInfo.totalChunks * 10 ** 4) / 10 ** 2
-    this.onProgress && this.onProgress(progress)
+    const progress = Math.ceil(this.#fileInfo.uploadedChunks / this.#fileInfo.totalChunks * 10 ** 4) / 10 ** 2
+    this.#onProgress && this.#onProgress(progress)
   }
 
   private handleFileSlice (start, end) {
-    if (end <= this.fileInfo.totalChunks) {
-      return this.file.slice(start * this.chunkSize, end * this.chunkSize)
+    if (end <= this.#fileInfo.totalChunks) {
+      return this.#file.slice(start * this.#chunkSize, end * this.#chunkSize)
     }
 
     return null
   }
 
   reStart (num = 0) {
-    this.fileInfo.uploadedChunks = num
+    this.#fileInfo.uploadedChunks = num
   }
 }
 

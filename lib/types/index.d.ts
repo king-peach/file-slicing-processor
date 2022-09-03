@@ -26,15 +26,9 @@ interface InstanceParams {
 }
 
 declare class FileSlicingProcessor {
-    private chunkSize;
-    private fileInfo;
-    private uploadedChunkNum;
-    private onError;
-    private onFinished;
-    private onProgress;
-    private onFileMD5Progress;
-    private file;
+    #private;
     constructor(file: File, options?: Partial<InstanceParams>);
+    getFileInfo(): Partial<FileInfo>;
     getFileRealMD5(): Promise<unknown>;
     getChunk(): any;
     getChunkMD5(): Promise<unknown>;
