@@ -18,17 +18,24 @@ export interface FileInfo {
 
 export interface InstanceParams {
   chunkSize: number;
-  fileMd5: boolean,
+  uploadedChunkNum: number,
   chunkMd5: boolean;
+  retryCount: number;
   onProgress: (process?: number) => void;
   onFinished: (fileInfo?: FileInfo) => void;
   onError: (err?: Error) => void;
+  onFileMD5Progress: (progress?: number) => void;
+}
+
+export interface HttpRequestParams {
+  chunk: Blob;
+  chunkNum: number;
+  chunkMD5?: string;
 }
 
 export enum Status {
   READY = 'READY',
   MD5 = 'MD5',
-  MD5_DONE = 'MD5_DONE',
   UPLAODING = 'UPLOADING',
   PAUSE = 'PAUSE',
   DONE = 'DONE'

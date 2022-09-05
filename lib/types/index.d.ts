@@ -18,11 +18,13 @@ interface FileInfo {
 
 interface InstanceParams {
   chunkSize: number;
-  fileMd5: boolean,
+  uploadedChunkNum: number,
   chunkMd5: boolean;
+  retryCount: number;
   onProgress: (process?: number) => void;
   onFinished: (fileInfo?: FileInfo) => void;
   onError: (err?: Error) => void;
+  onFileMD5Progress: (progress?: number) => void;
 }
 
 declare class FileSlicingProcessor {
@@ -31,10 +33,12 @@ declare class FileSlicingProcessor {
     getFileInfo(): Partial<FileInfo>;
     getFileRealMD5(): Promise<unknown>;
     getChunk(): any;
-    getChunkMD5(): Promise<unknown>;
+    getChunkMD5(): Promise<string>;
+    start(num?: number): Promise<Error>;
+    pause(): void;
+    play(): void;
+    done(): void;
     next(): void;
-    private handleFileSlice;
-    reStart(num?: number): void;
 }
 
 export { FileSlicingProcessor as default };

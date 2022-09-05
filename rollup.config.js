@@ -23,7 +23,8 @@ export default defineConfig([
       }),
       typescript({ 
         compilerOptions: {
-          // lib: ['es6']
+          "target": "esnext",
+          "outDir": "/lib/types/index.d.ts",
         }
       })
     ],

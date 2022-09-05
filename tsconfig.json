@@ -1,6 +1,9 @@
 {
   "compilerOptions": {
     "target": "esnext",
-    "moduleResolution": "node"
+    "moduleResolution": "node",
+    "noEmitOnError": false,
+    "outDir": "/lib/types/index.d.ts",
+    "declaration": false
   },
 }

@@ -1,6 +1,6 @@
 {
   "name": "file-slicing-processor",
-  "version": "1.1.0",
+  "version": "1.2.1",
   "description": "Web-side file slicing upload processor",
   "main": "./lib/bundle.cjs",
   "module": "./lib/bundle.mjs",
